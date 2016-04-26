@@ -18,8 +18,11 @@ if 'PYZMQ_BACKEND' in os.environ:
 else:
     # default to cython, fallback to cffi
     # (reverse on PyPy)
+    # (cli only on IronPython)
     if platform.python_implementation() == 'PyPy':
         first, second = ('zmq.backend.cffi', 'zmq.backend.cython')
+    elif platform.python_implementation() == 'IronPython':
+        first, second = ('zmq.backend.cli', None)
     else:
         first, second = ('zmq.backend.cython', 'zmq.backend.cffi')
 
