@@ -12,49 +12,47 @@
 
 #from zmq.error import ZMQError, InterruptedSystemCall, _check_rc
 
+from ZeroMQ import ZContext
+
 class Context(object):
-    pass
-#    _zmq_ctx = None
+    _zmq_ctx = None
 #    _iothreads = None
 #    _closed = None
-#    _sockets = None
-#    _shadow = False
+    _sockets = None
+    _shadow = False
 
-#    def __init__(self, io_threads=1, shadow=None):
+    def __init__(self, io_threads=1, shadow=None):
         
-#        if shadow:
-#            self._zmq_ctx = ffi.cast("void *", shadow)
-#            self._shadow = True
-#        else:
-#            self._shadow = False
-#            if not io_threads >= 0:
-#                raise ZMQError(EINVAL)
+        if shadow:
+            self._zmq_ctx = ffi.cast("void *", shadow)
+            self._shadow = True
+        else:
+            self._shadow = False
+            if not io_threads >= 0:
+                raise ZMQError(EINVAL)
         
-#            self._zmq_ctx = C.zmq_ctx_new()
-#        if self._zmq_ctx == ffi.NULL:
-#            raise ZMQError(C.zmq_errno())
-#        if not shadow:
-#            C.zmq_ctx_set(self._zmq_ctx, IO_THREADS, io_threads)
-#        self._closed = False
-#        self._sockets = set()
+            self._zmq_ctx = ZContext()
+        if not shadow:
+            self._zmq_ctx.ThreadPoolSize = io_threads
+        self._sockets = set()
     
 #    @property
 #    def underlying(self):
 #        """The address of the underlying libzmq context"""
 #        return int(ffi.cast('size_t', self._zmq_ctx))
     
-#    @property
-#    def closed(self):
-#        return self._closed
+    @property
+    def closed(self):
+        return not self._zmq_ctx
 
-#    def _add_socket(self, socket):
-#        ref = weakref.ref(socket)
-#        self._sockets.add(ref)
-#        return ref
+    def _add_socket(self, socket):
+        #ref = weakref.ref(socket)
+        self._sockets.add(socket)
+        return socket
 
-#    def _rm_socket(self, ref):
-#        if ref in self._sockets:
-#            self._sockets.remove(ref)
+    def _rm_socket(self, ref):
+        if ref in self._sockets:
+            self._sockets.remove(ref)
 
 #    def set(self, option, value):
 #        """set a context option

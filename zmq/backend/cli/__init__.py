@@ -12,11 +12,25 @@ ZeroMQ.ZFrame()
 
 from ZeroMQ.lib.zmq import Version
 def zmq_version_info():
-    (Version.Major, Version.Minor)
+    (Version.Major, Version.Minor, Version.Build)
+
+Message = None
+Stopwatch = None
+device = None
+proxy = None
+zmq_poll = None
+strerror = None
+zmq_errno = None
+has = None
+curve_keypair = None
+IPC_PATH_MAX_LEN = 0
+
 
 from .context import Context
 
-from ZeroMQ import ZSocket as Socket
+from . import constants
+
+from .socket import Socket
 
 from ZeroMQ import ZFrame as Frame
 
@@ -39,14 +53,3 @@ __all__ = [ # copy of public_api from zmq\backend\select.py
 ]
 
 
-Message = None
-Stopwatch = None
-device = None
-proxy = None
-zmq_poll = None
-strerror = None
-zmq_errno = None
-has = None
-curve_keypair = None
-constants = None
-IPC_PATH_MAX_LEN = 0
