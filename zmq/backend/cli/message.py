@@ -5,33 +5,39 @@
 
 import zmq
 from zmq.utils.strtypes import unicode
+from ZeroMQ import ZFrame
 
-try:
-    view = memoryview
-except NameError:
-    view = buffer
+import platform
+if platform.python_implementation() == 'IronPython':
+    view = lambda x: bytes(memoryview(x)).ToByteArray()
+else:
+    try:
+        view = memoryview
+    except NameError:
+        view = buffer
 
 _content = lambda x: x.tobytes() if type(x) == memoryview else x
 
-class Frame(object):
-    _data = None
+class Frame(ZFrame):
+    #_data = None
     tracker = None
     closed = False
     more = False
-    buffer = None
+    #buffer = None
 
 
     def __init__(self, data, track=False):
-        try:
-            view(data)
-        except TypeError:
-            raise
+        #try:
+        #    view(data)
+        #except TypeError:
+        #    raise
 
-        self._data = data
+        super(Frame, self).__init__(view(data))
+        #self._data = data
 
-        if isinstance(data, unicode):
-            raise TypeError("Unicode objects not allowed. Only: str/bytes, " +
-                            "buffer interfaces.")
+        #if isinstance(data, unicode):
+        #    raise TypeError("Unicode objects not allowed. Only: str/bytes, " +
+        #                    "buffer interfaces.")
 
         self.more = False
         self.tracker = None
@@ -39,7 +45,7 @@ class Frame(object):
         if track:
             self.tracker = zmq.MessageTracker()
 
-        self.buffer = view(self.bytes)
+        #self.buffer = view(self.bytes)
 
     @property
     def bytes(self):

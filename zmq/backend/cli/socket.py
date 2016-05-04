@@ -19,8 +19,9 @@ import zmq
 from zmq.error import ZMQError, _check_rc, _check_version
 from zmq.utils.strtypes import unicode
 
-from ZeroMQ import ZSocket
+from ZeroMQ import ZSocket, ZFrame, ZSocketFlags
 from System.TimeSpan import FromMilliseconds
+from System import Enum
 
 def new_pointer_from_opt(option, length=0):
     from zmq.sugar.constants import (
@@ -83,6 +84,14 @@ class Socket(object):
     @linger.setter
     def linger(self, value):
         self._zmq_socket.Linger = FromMilliseconds(value)
+
+    # clrzmq4 exposes the underlying C byte array as a C# string or Byte[], string is easier to deal with.
+    @property
+    def identity(self):
+        return bytes(self._zmq_socket.IdentityString)
+    @identity.setter
+    def identity(self, value):
+        self._zmq_socket.IdentityString = str(value)
 
     @property
     def underlying(self):
@@ -180,20 +189,22 @@ class Socket(object):
         return v
 
     def send(self, message, flags=0, copy=False, track=False):
-        if isinstance(message, unicode):
-            raise TypeError("Message must be in bytes, not an unicode Object")
+        #if isinstance(message, unicode):
+        #    raise TypeError("Message must be in bytes, not an unicode Object")
 
-        if isinstance(message, Frame):
-            message = message.bytes
+        if not isinstance(message, ZFrame):
+            message = ZFrame(message.ToByteArray())
 
-        zmq_msg = ffi.new('zmq_msg_t*')
-        c_message = ffi.new('char[]', message)
-        rc = C.zmq_msg_init_size(zmq_msg, len(message))
-        _check_rc(rc)
-        C.memcpy(C.zmq_msg_data(zmq_msg), c_message, len(message))
-        _retry_sys_call(C.zmq_msg_send, zmq_msg, self._zmq_socket, flags)
-        rc2 = C.zmq_msg_close(zmq_msg)
-        _check_rc(rc2)
+        self._zmq_socket.Send(message, Enum.Parse(ZSocketFlags, str(flags)))
+
+        #zmq_msg = ffi.new('zmq_msg_t*')
+        #c_message = ffi.new('char[]', message)
+        #rc = C.zmq_msg_init_size(zmq_msg, len(message))
+        #_check_rc(rc)
+        #C.memcpy(C.zmq_msg_data(zmq_msg), c_message, len(message))
+        #_retry_sys_call(C.zmq_msg_send, zmq_msg, self._zmq_socket, flags)
+        #rc2 = C.zmq_msg_close(zmq_msg)
+        #_check_rc(rc2)
 
         if track:
             return zmq.MessageTracker()

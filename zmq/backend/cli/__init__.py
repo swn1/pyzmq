@@ -32,7 +32,7 @@ from . import constants
 
 from .socket import Socket
 
-from ZeroMQ import ZFrame as Frame
+from .message import Frame, Message
 
 __all__ = [ # copy of public_api from zmq\backend\select.py
     'Context',
