@@ -150,25 +150,29 @@ class Socket(object):
         _check_rc(rc)
 
     def set(self, option, value):
-        length = None
+        #length = None
         if isinstance(value, unicode):
             raise TypeError("unicode not allowed, use bytes")
-        
         if isinstance(value, bytes):
-            if option not in zmq.constants.bytes_sockopts:
-                raise TypeError("not a bytes sockopt: %s" % option)
-            length = len(value)
+            self._zmq_socket.SetOption(option, value.ToByteArray())
+        else:
+            self._zmq_socket.SetOption(option, value)
         
-        c_data = initialize_opt_pointer(option, value, length)
+        #if isinstance(value, bytes):
+        #    if option not in zmq.constants.bytes_sockopts:
+        #        raise TypeError("not a bytes sockopt: %s" % option)
+        #    length = len(value)
+        
+        #c_data = initialize_opt_pointer(option, value, length)
 
-        c_value_pointer = c_data[0]
-        c_sizet = c_data[1]
+        #c_value_pointer = c_data[0]
+        #c_sizet = c_data[1]
 
-        _retry_sys_call(C.zmq_setsockopt,
-                        self._zmq_socket,
-                        option,
-                        ffi.cast('void*', c_value_pointer),
-                        c_sizet)
+        #_retry_sys_call(C.zmq_setsockopt,
+        #                self._zmq_socket,
+        #                option,
+        #                ffi.cast('void*', c_value_pointer),
+        #                c_sizet)
 
     def get(self, option):
         c_data = new_pointer_from_opt(option, length=255)
@@ -193,7 +197,7 @@ class Socket(object):
         #    raise TypeError("Message must be in bytes, not an unicode Object")
 
         if not isinstance(message, ZFrame):
-            message = ZFrame(message.ToByteArray())
+            message = ZFrame(bytes(message).ToByteArray())
 
         self._zmq_socket.Send(message, Enum.Parse(ZSocketFlags, str(flags)))
 

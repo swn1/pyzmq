@@ -18,7 +18,6 @@ Message = None
 Stopwatch = None
 device = None
 proxy = None
-zmq_poll = None
 strerror = None
 zmq_errno = None
 has = None
@@ -33,6 +32,8 @@ from . import constants
 from .socket import Socket
 
 from .message import Frame, Message
+
+from ._poll import zmq_poll
 
 __all__ = [ # copy of public_api from zmq\backend\select.py
     'Context',
