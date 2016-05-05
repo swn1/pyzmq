@@ -1,12 +1,12 @@
 #-----------------------------------------------------------------------------
 # Python module level constants
 #-----------------------------------------------------------------------------
-from ZeroMQ.lib.zmq import Version
-
-VERSION = Version.ToString()
-VERSION_MAJOR = Version.Major
-VERSION_MINOR = Version.Minor
-VERSION_PATCH = Version.Build
+import ZeroMQ
+_Version = ZeroMQ.lib.zmq.version()
+VERSION = _Version.ToString()
+VERSION_MAJOR = _Version[0]
+VERSION_MINOR = _Version[1]
+VERSION_PATCH = _Version[2]
 
 from ZeroMQ.ZSocketOption import NOBLOCK
 from ZeroMQ.ZSocketFlags import DontWait as DONTWAIT

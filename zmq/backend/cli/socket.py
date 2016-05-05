@@ -106,10 +106,10 @@ class Socket(object):
         rc = 0
         if not self._closed and hasattr(self, '_zmq_socket'):
             if self._zmq_socket is not None:
-                rc = C.zmq_close(self._zmq_socket)
+                rc = self._zmq_socket.Close()
             self._closed = True
             if self.context:
-                self.context._rm_socket(self._ref)
+                self.context._rm_socket(self._zmq_socket)
         return rc
 
     def bind(self, address):
