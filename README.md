@@ -1,6 +1,9 @@
-# PyZMQ: Python bindings for ØMQ
+# PyZMQ: IronPython bindings for ØMQ
 
-[![Build Status](https://travis-ci.org/zeromq/pyzmq.svg?branch=master)](https://travis-ci.org/zeromq/pyzmq)
+[![Join the chat at https://gitter.im/swn1/pyzmq](https://badges.gitter.im/swn1/pyzmq.svg)](https://gitter.im/swn1/pyzmq?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
+The ironpython branch here (and on my clrzmq4 fork) are an effort to get the jupyter_client library
+working under IronPython 2.7.5.
 
 This package contains Python bindings for [ØMQ](http://www.zeromq.org).
 ØMQ is a lightweight and fast messaging implementation.
