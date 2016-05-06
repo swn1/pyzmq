@@ -13,7 +13,7 @@ ZeroMQ.ZFrame()
 zmq_version_info = ZeroMQ.lib.zmq.version
 from ZeroMQ.backend import *
 
-Message = None
+Message = Frame
 Stopwatch = None
 device = None
 proxy = None
@@ -23,14 +23,7 @@ has = None
 curve_keypair = None
 IPC_PATH_MAX_LEN = 0
 
-
-from .context import Context
-
 from . import constants
-
-from .socket import Socket
-
-from .message import Frame, Message
 
 __all__ = [ # copy of public_api from zmq\backend\select.py
     'Context',
