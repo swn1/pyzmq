@@ -3,7 +3,30 @@
 [![Join the chat at https://gitter.im/swn1/pyzmq](https://badges.gitter.im/swn1/pyzmq.svg)](https://gitter.im/swn1/pyzmq?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 The ironpython branch here (and on my clrzmq4 fork) are an effort to get the jupyter_client library
-working under IronPython 2.7.5.
+working under IronPython 2.7.5.  A few patches were required in traitlets and ipython_genutils as well.
+
+This "smoke test" example works:
+```python
+import sys
+from time import sleep
+sys.path.insert(0, r"c:\users\steve\jupyter_client")
+sys.path.insert(0, r"c:\users\steve\jupyter_core")
+sys.path.insert(0, r"c:\users\steve\pyzmq")
+sys.path.insert(0, r"c:\users\steve\ipython_genutils")
+sys.path.insert(0, r"c:\users\steve\traitlets")
+sys.path.insert(0, r"C:\Users\steve\Source\Repos\clrzmq4\bin\Debug")
+
+import jupyter_client as jc
+km,kc = jc.manager.start_new_kernel(kernel_name='python3')
+cmd = kc.execute("import sys\nsys.version")
+sleep(2)
+r = kc.iopub_channel.get_msgs()
+def t(m): return m['msg_type']
+def cid(m): return m['parent_header']['msg_id']
+result = [m for m in r if t(m)=='execute_result' and cid(m) == cmd][-1]
+print result['content']['data']['text/plain']
+```
+where the directories inserterted into the path are the local clones of my forks of the repos, plus the build output from my fork of clrzmq4.  Remember to get the ironpython branch of each repo.
 
 This package contains Python bindings for [ØMQ](http://www.zeromq.org).
 ØMQ is a lightweight and fast messaging implementation.
