@@ -42,7 +42,6 @@ from distutils.command.build_ext import build_ext
 from distutils.command.sdist import sdist
 from distutils.version import LooseVersion as V
 
-from unittest import TextTestRunner, TestLoader
 from glob import glob
 from os.path import splitext, basename, join as pjoin
 
@@ -138,7 +137,6 @@ def bundled_settings(debug):
             # Python 3.5 adds EXT_SUFFIX to libs
             ext_suffix = distutils.sysconfig.get_config_var('EXT_SUFFIX')
             suffix = os.path.splitext(ext_suffix)[0]
-
 
         if debug:
             suffix = '_d' + suffix
@@ -240,9 +238,6 @@ def settings_from_prefix(prefix=None, bundle_libzmq_dylib=False):
                     env = os.environ['VIRTUAL_ENV']
                     settings['include_dirs'] += [pjoin(env, 'include')]
                     settings['library_dirs'] += [pjoin(env, 'lib')]
-    
-
-
 
         if bundle_libzmq_dylib:
             # bdist should link against bundled libzmq
@@ -307,12 +302,23 @@ class Configure(build_ext):
     def init_settings_from_config(self):
         """set up compiler settings, based on config"""
         cfg = self.config
-        
+
+        if sys.platform == 'win32' and cfg.get('bundle_msvcp') is None:
+            # default bundle_msvcp=True on:
+            # Windows Python 3.5 bdist *without* DISTUTILS_USE_SDK
+            if os.environ.get("PYZMQ_BUNDLE_CRT") or (
+                sys.version_info >= (3,5)
+                and self.compiler_type == 'msvc'
+                and not os.environ.get('DISTUTILS_USE_SDK')
+                and doing_bdist
+            ):
+                cfg['bundle_msvcp'] = True
+
         if cfg['libzmq_extension']:
             settings = bundled_settings(self.debug)
         else:
             settings = settings_from_prefix(cfg['zmq_prefix'], self.bundle_libzmq_dylib)
-    
+        
         if 'have_sys_un_h' not in cfg:
             # don't link against anything when checking for sys/un.h
             minus_zmq = copy.deepcopy(settings)
@@ -507,8 +513,8 @@ class Configure(build_ext):
         self.distribution.ext_modules.insert(0, libzmq)
         
         # use tweetnacl to provide CURVE support
-        libzmq.define_macros.append(('HAVE_LIBSODIUM', 1))
-        libzmq.define_macros.append(('HAVE_TWEETNACL', 1))
+        libzmq.define_macros.append(('ZMQ_HAVE_CURVE', 1))
+        libzmq.define_macros.append(('ZMQ_USE_TWEETNACL', 1))
         
         # select polling subsystem based on platform
         if sys.platform  == 'darwin' or 'bsd' in sys.platform:
@@ -537,6 +543,29 @@ class Configure(build_ext):
 
             # And things like sockets come from libraries that must be named.
             libzmq.libraries.extend(['rpcrt4', 'ws2_32', 'advapi32'])
+            
+            # bundle MSCVP redist
+            if self.config['bundle_msvcp']:
+                cc = new_compiler(compiler=self.compiler_type)
+                cc.initialize()
+                # get vc_redist location via private API
+                try:
+                    cc._vcruntime_redist
+                except AttributeError:
+                    # fatal error if env set, warn otherwise
+                    msg = fatal if os.environ.get("PYZMQ_BUNDLE_CRT") else warn
+                    msg("Failed to get cc._vcruntime via private API, not bundling CRT")
+                if cc._vcruntime_redist:
+                    redist_dir, dll = os.path.split(cc._vcruntime_redist)
+                    to_bundle = [
+                        pjoin(redist_dir, dll.replace('vcruntime', name))
+                        for name in ('msvcp', 'concrt')
+                    ]
+                    for src in to_bundle:
+                        dest = localpath('zmq', basename(src))
+                        info("Copying %s -> %s" % (src, dest))
+                        # copyfile to avoid permission issues
+                        shutil.copyfile(src, dest)
 
         else:
             libzmq.include_dirs.append(bundledir)
@@ -746,27 +775,8 @@ class TestCommand(Command):
     def finalize_options(self):
         pass
     
-    def run_nose(self):
-        """Run the test suite with nose."""
-        nose = 'nose.__main__' if sys.version_info < (2,7) else 'nose'
-        if subprocess.call([sys.executable, '-m', nose, '-vvx', pjoin(self._dir, 'zmq', 'tests')]):
-            sys.exit(1)
-    
-    def run_unittest(self):
-        """Finds all the tests modules in zmq/tests/ and runs them."""
-        testfiles = [ ]
-        for t in glob(pjoin(self._dir, 'zmq', 'tests', '*.py')):
-            name = splitext(basename(t))[0]
-            if name.startswith('test_'):
-                testfiles.append('.'.join(
-                    ['zmq.tests', name])
-                )
-        tests = TestLoader().loadTestsFromNames(testfiles)
-        t = TextTestRunner(verbosity = 2)
-        t.run(tests)
-    
     def run(self):
-        """Run the test suite, with nose, or unittest if nose is unavailable"""
+        """Run the test suite with py.test"""
         # crude check for inplace build:
         try:
             import zmq
@@ -778,14 +788,9 @@ class TestCommand(Command):
             sys.exit(1)
         
         info("Testing pyzmq-%s with libzmq-%s" % (zmq.pyzmq_version(), zmq.zmq_version()))
-        
-        try:
-            import nose
-        except ImportError:
-            warn("nose unavailable, falling back on unittest. Skipped tests will appear as ERRORs.")
-            return self.run_unittest()
-        else:
-            return self.run_nose()
+        p = Popen([sys.executable, '-m', 'pytest', '-v', os.path.join('zmq', 'tests')])
+        p.wait()
+        sys.exit(p.returncode)
 
 class GitRevisionCommand(Command):
     """find the current git revision and add it to zmq.sugar.version.__revision__"""
@@ -1138,14 +1143,13 @@ if pypy:
     cmdclass['build_ext'] = pypy_build_ext
 
 
-package_data = {'zmq': ['*.pxd'],
+package_data = {'zmq': ['*.pxd', '*' + lib_ext],
                 'zmq.backend.cython': ['*.pxd', '*.pxi'],
                 'zmq.backend.cffi': ['*.h', '*.c'],
                 'zmq.devices': ['*.pxd'],
                 'zmq.utils': ['*.pxd', '*.h', '*.json'],
 }
 
-package_data['zmq'].append(libzmq_name+lib_ext)
 
 def extract_version():
     """extract pyzmq version from sugar/version.py, so it's not multiply defined"""
@@ -1169,6 +1173,12 @@ def find_packages():
         package = dir.replace(os.path.sep, '.')
         if '__init__.py' not in files:
             # not a package
+            continue
+        if sys.version_info < (3,3) and 'asyncio' in package and 'sdist' not in sys.argv:
+            # Don't install asyncio packages on old Python
+            # avoids issues with tools like compileall, pytest, etc.
+            # that get confused by presence of Python 3-only sources,
+            # even when they are never imported.
             continue
         packages.append(package)
     return packages

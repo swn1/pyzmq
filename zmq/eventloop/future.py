@@ -4,6 +4,7 @@
 # Distributed under the terms of the Modified BSD License.
 
 from collections import namedtuple
+from zmq import POLLOUT, POLLIN
 
 try:
     from tornado.concurrent import Future
@@ -163,7 +164,24 @@ class _AsyncSocket(_zmq.Socket):
         return self._add_send_event('send', msg=msg,
             kwargs=dict(flags=flags, copy=copy, track=track),
         )
-    
+
+    def _deserialize(self, recvd, load):
+        """Deserialize with Futures"""
+        f = self._Future()
+        def _chain(_):
+            if recvd.exception():
+                f.set_exception(recvd.exception())
+            else:
+                buf = recvd.result()
+                try:
+                    loaded = load(buf)
+                except Exception as e:
+                    f.set_exception(e)
+                else:
+                    f.set_result(loaded)
+        recvd.add_done_callback(_chain)
+        return f
+
     def poll(self, timeout=None, flags=_zmq.POLLIN):
         """poll the socket for events
         
@@ -186,9 +204,30 @@ class _AsyncSocket(_zmq.Socket):
             else:
                 evts = dict(f.result())
                 future.set_result(evts.get(self, 0))
-        
+
         f.add_done_callback(unwrap_result)
         return future
+
+    def _add_timeout(self, future, timeout):
+        """Add a timeout for a send or recv Future"""
+        def future_timeout():
+            print("calling future timeout")
+            if future.done():
+                # future already resolved, do nothing
+                return
+            # raise EAGAIN
+            future.set_exception(_zmq.Again())
+        self._call_later(timeout, future_timeout)
+
+    def _call_later(self, delay, callback):
+        """Schedule a function to be called later
+
+        Override for different IOLoop implementations
+
+        Tornado and asyncio happen to both have ioloop.call_later
+        with the same signature.
+        """
+        self.io_loop.call_later(delay, callback)
 
     def _add_recv_event(self, kind, kwargs=None, future=None):
         """Add a recv event, returning the corresponding Future"""
@@ -204,16 +243,27 @@ class _AsyncSocket(_zmq.Socket):
                 f.set_result(r)
             return f
 
+        if hasattr(_zmq, 'RCVTIMEO'):
+            timeout_ms = self._shadow_sock.rcvtimeo
+            if timeout_ms >= 0:
+                self._add_timeout(f, timeout_ms * 1e-3)
+
         self._recv_futures.append(
             _FutureEvent(f, kind, kwargs, msg=None)
         )
-        self._add_io_state(self._READ)
+        if self.events & POLLIN:
+            # recv immediately, if we can
+            self._handle_recv()
+        if self._recv_futures:
+            self._add_io_state(self._READ)
         return f
     
     def _add_send_event(self, kind, msg=None, kwargs=None, future=None):
         """Add a send event, returning the corresponding Future"""
         f = future or self._Future()
         if kind.startswith('send') and kwargs.get('flags', 0) & _zmq.DONTWAIT:
+            if kind == 'send_multipart':
+                kwargs['msg_parts'] = msg
             # short-circuit non-blocking calls
             send = getattr(self._shadow_sock, kind)
             try:
@@ -224,10 +274,19 @@ class _AsyncSocket(_zmq.Socket):
                 f.set_result(r)
             return f
 
+        if hasattr(_zmq, 'SNDTIMEO'):
+            timeout_ms = self._shadow_sock.sndtimeo
+            if timeout_ms >= 0:
+                self._add_timeout(f, timeout_ms * 1e-3)
+
         self._send_futures.append(
             _FutureEvent(f, kind, kwargs=kwargs, msg=msg)
         )
-        self._add_io_state(self._WRITE)
+        if self.events & POLLOUT:
+            # send immediately if we can
+            self._handle_send()
+        if self._send_futures:
+            self._add_io_state(self._WRITE)
         return f
     
     def _handle_recv(self):
