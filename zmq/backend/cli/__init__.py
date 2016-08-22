@@ -1,9 +1,6 @@
 
 import clr
-import os
-zmqdll = os.path.join(os.path.dirname(__file__), "ZeroMQ.dll")
-assm=clr.LoadAssemblyFromFileWithPath(zmqdll)
-clr.AddReference(assm)
+clr.AddReference("ZeroMQ") # installed in build folder via NuGet.
 import ZeroMQ
 # make an object to force static class initializations
 ZeroMQ.ZFrame()
@@ -11,19 +8,10 @@ ZeroMQ.ZFrame()
 #_libzmq = DynamicHelpers.GetPythonTypeFromType(ZeroMQ.lib.zmq)
 
 zmq_version_info = ZeroMQ.lib.zmq.version
-from ZeroMQ.backend import *
-
-Message = Frame
-Stopwatch = None
-device = None
-proxy = None
-strerror = None
-zmq_errno = None
-has = None
-curve_keypair = None
 IPC_PATH_MAX_LEN = 0
 
 from . import constants
+from .context import Context
 
 __all__ = [ # copy of public_api from zmq\backend\select.py
     'Context',
