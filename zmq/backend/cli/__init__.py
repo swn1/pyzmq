@@ -12,6 +12,9 @@ IPC_PATH_MAX_LEN = 0
 
 from . import constants
 from .context import Context
+from .socket import Socket
+from .frame import Frame
+from .message import Message
 
 __all__ = [ # copy of public_api from zmq\backend\select.py
     'Context',
