@@ -15,6 +15,17 @@ from .context import Context
 from .socket import Socket
 from .frame import Frame
 from .message import Message
+from .stopwatch import Stopwatch
+from .devices import device, proxy
+from .poll import zmq_poll
+from .error import strerror, zmq_errno
+
+has = ZeroMQ.ZContext.Has
+
+def curve_keypair():
+    pk = None
+    sk = None
+    return ZeroMQ.Z85.CurveKeypair()
 
 __all__ = [ # copy of public_api from zmq\backend\select.py
     'Context',

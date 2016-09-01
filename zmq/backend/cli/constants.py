@@ -8,6 +8,8 @@ VERSION_MAJOR = _Version[0]
 VERSION_MINOR = _Version[1]
 VERSION_PATCH = _Version[2]
 
+DRAFT_API = False # not wired out by clrzmq4, false seems safe choice
+
 from ZeroMQ.ZSocketOption import NOBLOCK
 from ZeroMQ.ZSocketFlags import DontWait as DONTWAIT
 #NOBLOCK = ZMQ_NOBLOCK
@@ -102,6 +104,7 @@ from ZeroMQ.ZError import ETERM, EMTHREAD
 #ETERM = ZMQ_ETERM
 #EMTHREAD = ZMQ_EMTHREAD
 
+from ZeroMQ.ZContextOption import IO_THREADS
 #IO_THREADS = ZMQ_IO_THREADS
 #MAX_SOCKETS = ZMQ_MAX_SOCKETS
 #SOCKET_LIMIT = ZMQ_SOCKET_LIMIT
