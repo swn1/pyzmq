@@ -26,6 +26,8 @@ class Socket(ZeroMQ.ZSocket):
         self.SetOption(opt, val)
 
     def get(self, opt):
+        if opt == ZeroMQ.ZSocketOption.RCVMORE:
+            return self.ReceiveMore
         return self.GetOption(opt)
 
     @property
@@ -56,38 +58,17 @@ class Socket(ZeroMQ.ZSocket):
 
         self.Send(message, System.Enum.Parse(ZeroMQ.ZSocketFlags, str(flags)))
 
-        #zmq_msg = ffi.new('zmq_msg_t*')
-        #c_message = ffi.new('char[]', message)
-        #rc = C.zmq_msg_init_size(zmq_msg, len(message))
-        #_check_rc(rc)
-        #C.memcpy(C.zmq_msg_data(zmq_msg), c_message, len(message))
-        #_retry_sys_call(C.zmq_msg_send, zmq_msg, self._zmq_socket, flags)
-        #rc2 = C.zmq_msg_close(zmq_msg)
-        #_check_rc(rc2)
-
         if track:
             raise NotImplementedError()
             # return zmq.MessageTracker()
 
-    #def recv(self, flags=0, copy=True, track=False):
-    #    zmq_msg = ffi.new('zmq_msg_t*')
-    #    C.zmq_msg_init(zmq_msg)
-        
-    #    try:
-    #        _retry_sys_call(C.zmq_msg_recv, zmq_msg, self._zmq_socket, flags)
-    #    except Exception:
-    #        C.zmq_msg_close(zmq_msg)
-    #        raise
+    def recv(self, flags=0, copy=True, track=False):
+        if track:
+            raise NotImplementedError("recv track option")
 
-    #    _buffer = ffi.buffer(C.zmq_msg_data(zmq_msg), C.zmq_msg_size(zmq_msg))
-    #    value = _buffer[:]
-    #    rc = C.zmq_msg_close(zmq_msg)
-    #    _check_rc(rc)
+        frame, err = self.ReceiveFrame(System.Enum.Parse(ZeroMQ.ZSocketFlags, str(flags)))
 
-    #    frame = Frame(value, track=track)
-    #    frame.more = self.getsockopt(RCVMORE)
-
-    #    if copy:
-    #        return frame.bytes
-    #    else:
-    #        return frame
+        if copy:
+            return bytes(frame.Read())
+        else:
+            return zmq.Frame(frame)
