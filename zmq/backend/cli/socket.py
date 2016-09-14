@@ -3,6 +3,7 @@ import ZeroMQ
 import System
 
 class Socket(ZeroMQ.ZSocket):
+    _closed = None
     def __new__(cls, context=None, socket_type=None, shadow=None):
         if not context or not socket_type:
             raise ValueError()
@@ -10,6 +11,14 @@ class Socket(ZeroMQ.ZSocket):
         if shadow:
             raise NotImplementedError()
         return rv
+
+    @property
+    def closed(self):
+        return self._closed
+
+    def close(self):
+        self.Close()
+        self._closed = True
 
     def set(self, opt, val):
         if isinstance(val, bytes):
